@@ -44,6 +44,13 @@
             };
             map.appendChild(cell);
         }
+   // Восстановление энергии: +5 единиц каждые 30 секунд
+setInterval(() => {
+    if (energy < 100) {
+        energy = Math.min(100, energy + 5);
+        document.getElementById('energy').innerText = energy;
+    }
+}, 30000); 
     </script>
 </body>
 </html>
