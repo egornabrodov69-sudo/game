@@ -5,69 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { 
-            background: radial-gradient(circle, #0a0a20 0%, #020205 100%); 
-            color: white; margin: 0; font-family: 'Segoe UI', sans-serif;
-            display: flex; flex-direction: column; align-items: center; height: 100vh;
-        }
-        .stats { 
-            display: flex; gap: 20px; padding: 20px; background: rgba(255,255,255,0.05);
-            width: 100%; justify-content: center; border-bottom: 1px solid #333;
-        }
-        .stat-item { text-align: center; }
-        .stat-value { font-weight: bold; color: #00ff87; display: block; font-size: 18px; }
-
-        .grid { 
-            display: grid; grid-template-columns: repeat(5, 65px); gap: 12px; 
-            padding: 20px; margin-top: auto; margin-bottom: auto;
-        }
-        .cell { 
-            width: 65px; height: 65px; border-radius: 15px; 
-            background: rgba(255, 255, 255, 0.03); 
-            border: 1px solid rgba(0, 255, 135, 0.2); 
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background-size: cover; position: relative; overflow: hidden;
-        }
-        /* Переливание пустой клетки */
-        .cell:not(.owned) {
-            animation: pulse-border 3s infinite alternate;
-        }
-        @keyframes pulse-border {
-            from { border-color: rgba(0, 255, 135, 0.2); box-shadow: 0 0 0px #00ff8700; }
-            to { border-color: rgba(138, 43, 226, 0.5); box-shadow: 0 0 10px #8a2be233; }
-        }
-
-        .cell.owned {
-            border: 2px solid #00f2ff;
-            box-shadow: 0 0 20px #00f2ff, inset 0 0 10px #00f2ff;
-            transform: scale(1.05);
-        }
-        
-        #btn-action {
-            margin-bottom: 30px; padding: 15px 40px; border-radius: 30px;
-            background: linear-gradient(90deg, #00ff87, #8a2be2);
-            border: none; color: white; font-weight: bold; font-size: 16px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
+        body { background: radial-gradient(circle, #0a0a20 0%, #020205 100%); color: white; margin: 0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+        .stats { display: flex; gap: 20px; padding: 20px; background: rgba(255,255,255,0.05); width: 100%; justify-content: center; border-bottom: 1px solid #333; }
+        .stat-value { font-weight: bold; color: #00ff87; font-size: 18px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 65px); gap: 12px; padding: 20px; margin-top: auto; margin-bottom: auto; }
+        .cell { width: 65px; height: 65px; border-radius: 15px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 255, 135, 0.2); transition: 0.3s; background-size: cover; background-position: center; }
+        .cell.owned { border: 2px solid #00f2ff; box-shadow: 0 0 20px #00f2ff; transform: scale(1.05); }
     </style>
 </head>
 <body>
     <div class="stats">
-        <div class="stat-item"><span class="stat-value" id="energy">100</span> ЭНЕРГИЯ</div>
-        <div class="stat-item"><span class="stat-value" id="cells-count">0</span> СЕКТОРЫ</div>
+        <div><span class="stat-value" id="energy">100</span> ⚡ ЭНЕРГИЯ</div>
+        <div><span class="stat-value" id="cells-count">0</span> 🌍 СЕКТОРЫ</div>
     </div>
-
     <div class="grid" id="map"></div>
-
-    <button id="btn-action" onclick="tg.close()">ВЕРНУТЬСЯ В ШТАБ</button>
-
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         const user = tg.initDataUnsafe.user;
         let energy = 100;
         let ownedCells = 0;
-
         const map = document.getElementById('map');
         for (let i = 1; i <= 25; i++) {
             const cell = document.createElement('div');
@@ -76,15 +33,13 @@
                 if (!cell.classList.contains('owned') && energy >= 10) {
                     energy -= 10;
                     ownedCells++;
-                    document.getElementById('energy').innerText = energy;document.getElementById('cells-count').innerText = ownedCells;
-                    
+                    document.getElementById('energy').innerText = energy;
+                    document.getElementById('cells-count').innerText = ownedCells;
                     cell.classList.add('owned');
-                    if (user && user.photo_url) {
-                        cell.style.backgroundImage = `url('${user.photo_url}')`;
-                    }
+                    if (user && user.photo_url) cell.style.backgroundImage = `url('${user.photo_url}')`;
                     tg.HapticFeedback.notificationOccurred('success');
                 } else if (energy < 10) {
-                    tg.showAlert("Недостаточно энергии! Подожди или купи в Арсенале.");
+                    tg.showAlert("Энергия на нуле! Купи заряд в Арсенале.");
                 }
             };
             map.appendChild(cell);
