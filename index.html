@@ -1,39 +1,43 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { background: #020205; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .grid { display: grid; grid-template-columns: repeat(5, 65px); gap: 10px; }
-        .cell { 
-            width: 65px; height: 65px; border-radius: 12px; 
-            background: linear-gradient(45deg, #00ff8755, #6000ff55); 
-            border: 1px solid #333; transition: 0.3s; background-size: cover;
-        }
-        .cell.owned { border: 2px solid #00f2ff; box-shadow: 0 0 15px #00f2ff; }
-        h2 { color: #00ff87; text-shadow: 0 0 10px #00ff87; margin-bottom: 5px; }
-    </style>
-</head>
-<body>
-    <h2 id="user_name">ГЕНЕРАЛ</h2>
-    <div class="grid" id="map"></div>
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        const user = tg.initDataUnsafe.user;
-        if (user) document.getElementById('user_name').innerText = user.first_name.toUpperCase();
-
-        const map = document.getElementById('map');
-        for (let i = 1; i <= 25; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.onclick = () => {
-                cell.classList.toggle('owned');
-                if (user && user.photo_url) cell.style.backgroundImage = `url('${user.photo_url}')`;
+document.getElementById('cells-count').innerText = ownedCells;
+                    
+                    cell.classList.add('owned');
+                    if (user && user.photo_url) {
+                        cell.style.backgroundImage = `url('${user.photo_url}')`;
+                    }
+                    tg.HapticFeedback.notificationOccurred('success');
+                } else if (energy < 10) {
+                    tg.showAlert("Недостаточно энергии! Подожди или купи в Арсенале.");
+                }
             };
             map.appendChild(cell);
         }
     </script>
 </body>
 </html>
+```
+
+---
+
+### Что изменилось в игре:
+1.  **Энергия:** Теперь захват стоит 10 единиц энергии. Когда она кончится — игрок не сможет захватывать клетки.
+2.  **Заработок:** Чтобы восстановить энергию мгновенно, игроку придется идти в твой **Арсенал** и платить Звезды! 
+3.  **Визуал:** Клетки стали более "стеклянными", с плавной анимацией и тактильной отдачей (вибрацией) при захвате.
+
+### Как на этом заработать прямо сейчас?
+Обнови код бота в Pydroid (добавь кнопку покупки Энергии):
+
+```python
+@dp.message(F.text == "⚡ КУПИТЬ ЭНЕРГИЮ (20 ⭐)")
+async def buy_energy(message: types.Message):
+    await bot.send_invoice(
+        chat_id=message.chat.id,
+        title="Заряд Энергии",
+        description="Восстанавливает 100% энергии для захвата новых миров!",
+        payload="energy_refill",
+        currency="XTR",
+        prices=[LabeledPrice(label="Энергия", amount=20)],
+        provider_token=""
+    )
+```
+
+**Попробуй обновить `index.html` на Гитхабе и зайди в игру.** Посмотри, как теперь работают ресурсы. Если всё ок — будем делать так, чтобы игроки могли **воевать** друг с другом на одной карте! 🛰️⚔️⭐️
