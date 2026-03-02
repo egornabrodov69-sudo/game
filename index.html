@@ -8,20 +8,18 @@
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; }
         #ui { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         #joystick { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; pointer-events: auto; }
-        .btn { position: absolute; border-radius: 10px; background: rgba(0,0,0,0.6); color: white; display: flex; align-items: center; justify-content: center; pointer-events: auto; border: 1px solid #fff; }
-        #shoot-btn { bottom: 30px; right: 30px; width: 100px; height: 100px; border-radius: 50%; background: rgba(255,0,0,0.4); font-size: 18px; }
-        #action-btn { bottom: 30px; right: 150px; width: 120px; height: 50px; display: none; background: orange; color: black; font-weight: bold; }
+        .btn { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.1); color: white; display: flex; align-items: center; justify-content: center; pointer-events: auto; border: 1px solid #fff; }
+        #shoot-btn { bottom: 30px; right: 30px; width: 100px; height: 100px; background: rgba(255,0,0,0.3); font-size: 18px; }
         #inventory { position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 14px; text-shadow: 1px 1px #000; }
-        #hp-bar { position: absolute; top: 10px; right: 10px; width: 180px; height: 15px; background: #300; border: 2px solid #fff; }
-        #hp-fill { width: 100%; height: 100%; background: #f00; transition: 0.3s; }
+        #hp-bar { position: absolute; top: 10px; right: 10px; width: 150px; height: 12px; background: #300; border: 1px solid #fff; }
+        #hp-fill { width: 100%; height: 100%; background: #f00; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <div id="inventory">📦 ЗАПЧАСТИ: 0 | 🔫 ПАТРОНЫ: 30</div>
+        <div id="inventory">📦 ЗАПЧАСТИ: 0 | 🔫 AK-47</div>
         <div id="hp-bar"><div id="hp-fill"></div></div>
         <div id="shoot-btn" class="btn">ОГОНЬ</div>
-        <div id="action-btn" class="btn">ОБЫСКАТЬ</div>
     </div>
     <div id="joystick"></div>
 
@@ -29,45 +27,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('skin') === 'admin';
-
-        let parts = 0, ammo = 30, hp = 100;
-
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x050505, 0.15);
+        scene.fog = new THREE.FogExp2(0x020202, 0.2); // Густой темный туман
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        const flashlight = new THREE.SpotLight(isAdmin ? 0x00ffff : 0xffffff, 2, 25, 0.4);
+        const flashlight = new THREE.SpotLight(0xffffff, 2, 20, 0.4);
         camera.add(flashlight); flashlight.target.position.set(0,0,-1); camera.add(flashlight.target);
         scene.add(camera);
 
-        // АК-47 В РУКАХ
-        const gun = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshStandardMaterial({color: 0x111111}));
-        const mag = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.15), new THREE.MeshStandardMaterial({color: 0x111111}));
-        mag.position.set(0, -0.2, -0.1); gun.add(body, mag);
-        gun.position.set(0.3, -0.3, -0.5); camera.add(gun);
+        // ЗЕМЛЯ (Трава/Грязь)
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({color: 0x111111}));
+        ground.rotation.x = -Math.PI/2; scene.add(ground);
 
-        // МАШИНА
-        const car = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshStandardMaterial({color: isAdmin ? 0xffd700 : 0x550000}));
-        car.position.set(0, 0.5, -5); scene.add(car);
+        // ДОМ (Стены)
+        const wallMat = new THREE.MeshStandardMaterial({color: 0x222222});
+        function addWall(x, z, w, h, ry=0) {
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.2), wallMat);
+            wall.position.set(x, h/2, z); wall.rotation.y = ry; scene.add(wall);
+        }
+        addWall(0, -10, 8, 4); // Задняя стена дома
+        addWall(-4, -6, 8, 4, Math.PI/2); // Левая
+        addWall(4, -6, 8, 4, Math.PI/2); // Правая
 
-        // ЛУТ (Ящик с запчастями)
-        const loot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({color: 0x00ff00}));
-        loot.position.set(-2, 0.25, -4); scene.add(loot);
+        // ДЕРЕВЬЯ (Лес вокруг)
+        for(let i=0; i<30; i++) {
+            const tree = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 8), new THREE.MeshStandardMaterial({color: 0x050505}));
+            tree.position.set(Math.random()*40-20, 4, Math.random()*40-20);
+            if(tree.position.z > -2) scene.add(tree); 
+        }
 
         // ЗОМБИ
         const zombie = new THREE.Group();
-        zombie.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.4), new THREE.MeshStandardMaterial({color: 0x113311})));
-        zombie.position.set(0, 0.9, -15); scene.add(zombie);
+        zombie.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.4), new THREE.MeshStandardMaterial({color: 0x112211})));
+        zombie.position.set(5, 0.9, -15); scene.add(zombie);
 
-        camera.position.set(0, 1.6, 0);
+        camera.position.set(0, 1.6, 5);
 
         // Управление
         let mF = 0, mS = 0;
@@ -75,47 +72,20 @@
         joy.on('move', (e, d) => { mF = Math.sin(d.angle.radian) * d.distance/50; mS = Math.cos(d.angle.radian) * d.distance/50; });
         joy.on('end', () => { mF = 0; mS = 0; });
 
-        // Стрельба
         document.getElementById('shoot-btn').ontouchstart = () => {
-            if(ammo <= 0) return alert("НЕТ ПАТРОНОВ!");
-            ammo--; updateUI();
-            flashlight.intensity = 15; gun.position.z += 0.05;
-            setTimeout(() => { flashlight.intensity = 2; gun.position.z -= 0.05; }, 50);
-            
+            flashlight.intensity = 15; setTimeout(() => flashlight.intensity = 2, 50);
             let ray = new THREE.Raycaster();
             ray.setFromCamera({x:0, y:0}, camera);
-            if(ray.intersectObject(zombie, true).length > 0) {
-                zombie.position.z -= 3;
-            }
+            if(ray.intersectObject(zombie, true).length > 0) zombie.position.z -= 2;
         };
-
-        function updateUI() {
-            document.getElementById('inventory').innerText = `📦 ЗАПЧАСТИ: ${parts} | 🔫 ПАТРОНЫ: ${ammo}`;
-            document.getElementById('hp-fill').style.width = hp + "%";
-        }
 
         function animate() {
             requestAnimationFrame(animate);
             camera.translateZ(-mF * 0.1); camera.translateX(mS * 0.1);
             zombie.lookAt(camera.position.x, 0, camera.position.z);
             zombie.translateZ(0.04);
-
-            // Кнопка действия рядом с лутом или машиной
-            let distToLoot = camera.position.distanceTo(loot.position);
-            const actionBtn = document.getElementById('action-btn');
-            if(distToLoot < 2) {
-                actionBtn.style.display = 'flex';
-                actionBtn.onclick = () => { parts++; loot.position.y = -10; actionBtn.style.display = 'none'; updateUI(); };
-            } else { actionBtn.style.display = 'none'; }
-
-            if(camera.position.distanceTo(zombie.position) < 1.5 && !isAdmin) {
-                hp -= 0.3; updateUI();
-            }
-            if(hp <= 0) location.reload();
-
             renderer.render(scene, camera);
         }
         animate();
     </script>
 </body>
-</html>
