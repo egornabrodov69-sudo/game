@@ -26,73 +26,190 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
 
     <script>
+        // Three.js Scene Setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
+        scene.background = new THREE.Color(0x87ceeb); // Sky blue background
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Lighting
         const sun = new THREE.DirectionalLight(0xffffff, 1);
-        sun.position.set(5, 10, 7.5); scene.add(sun);
-        scene.add(new THREE.AmbientLight(0x404040));
+        sun.position.set(5, 10, 7.5); // Position the sun (simulating directional light)
+        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0x404040)); // Soft ambient light
 
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color: 0xd2b48c}));
-        floor.rotation.x = -Math.PI / 2; scene.add(floor);
+        // Floor
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color: 0xd2b48c})); // Sand color
+        floor.rotation.x = -Math.PI / 2; // Rotate to lie flat
+        scene.add(floor);
 
-        const wallMat = new THREE.MeshStandardMaterial({color: 0xd2b48c});
-        const crateMat = new THREE.MeshStandardMaterial({color: 0x8b4513});
+        // Materials for walls and crates
+        const wallMat = new THREE.MeshStandardMaterial({color: 0xd2b48c}); // Same as floor for now
+        const crateMat = new THREE.MeshStandardMaterial({color: 0x8b4513}); // Wood color
+
+        // Helper function to create boxes (buildings/obstacles)
         function b(x,y,z,w,h,d, material = wallMat) {
             const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), material);
-            m.position.set(x,y,z); scene.add(m);
+            m.position.set(x,y,z);
+            scene.add(m);
         }
-        b(0, 2.5, -20, 40, 5, 1); b(0, 2.5, 20, 40, 5, 1);
-        b(-20, 2.5, 0, 1, 5, 40); b(20, 2.5, 0, 1, 5, 40);
 
+        // Walls (border of the arena)
+        b(0, 2.5, -20, 40, 5, 1); // Back wall
+        b(0, 2.5, 20, 40, 5, 1);  // Front wall
+        b(-20, 2.5, 0, 1, 5, 40); // Left wall
+        b(20, 2.5, 0, 1, 5, 40);  // Right wall
+
+        // Example crates/obstacles
         b(5, 0.75, -5, 1.5, 1.5, 1.5, crateMat);
         b(5, 0.75, -3, 1.5, 1.5, 1.5, crateMat);
         b(7, 0.75, -5, 1.5, 1.5, 1.5, crateMat);
-        b(-10, 2.5, 0, 10, 5, 1);
+        b(-10, 2.5, 0, 10, 5, 1); // Another wall section
 
+        // Player's gun (attached to camera)
         const gun = new THREE.Group();
+        // Base of the gun
         gun.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshStandardMaterial({color: 0x111111})));
-        gun.position.set(0.3, -0.3, -0.5); camera.add(gun); scene.add(camera);
+        gun.position.set(0.3, -0.3, -0.5); // Position relative to camera
+        camera.add(gun); // Add gun to camera
+        scene.add(camera); // Add camera (with gun) to scene
 
-        camera.position.set(0, 1.6, 10);
+        // Initial camera position (player start position)
+        camera.position.set(0, 1.6
 
-        let mF = 0, mS = 0;
-        const joy = nipplejs.create({ zone: document.getElementById('joystick'), mode: 'static', position: {left: '60px', bottom: '60px'}, color: 'white' });
-        joy.on('move', (e, d) => {
-            mF = Math.sin(d.angle.radian) * d.distance/50;
-            mS = Math.cos(d.angle.radian) * d.distance/50;
+, 10); // x, y (height), z
+
+        // Player movement variables
+        let moveForward = 0, moveSideways = 0; // These will be controlled by the joystick
+
+        // Joystick setup
+        const joy = nipplejs.create({
+            zone: document.getElementById('joystick'),
+            mode: 'static',
+            position: {left: '60px', bottom: '60px'}, // Center of joystick zone
+            color: 'white'
         });
-        joy.on('end', () => { mF = 0; mS = 0; });
 
-        let tX = 0;
-        window.addEventListener('touchstart', e => {
-            if(e.touches[0].clientX > window.innerWidth/2) tX = e.touches[0].clientX;
+        // Joystick event listeners
+        joy.on('move', (e, data) => {
+            // data.angle.radian: angle of joystick from origin (0 is right, Math.PI/2 is up)
+            // data.distance: distance from origin (0 to 50, as radius is 50)
+            // We want forward/backward and left/right movement based on camera's orientation
+
+            // Calculate movement force based on joystick angle and distance
+            // Here, data.angle.radian 0 is right, PI/2 is up.
+            // For games, often we want "forward" to be up (PI/2) and "backward" to be down (3PI/2)
+            // "Sideways" would be left (PI) and right (0/2PI)
+            // Let's assume positive mF means forward, positive mS means right.
+            // This might need adjustment based on how camera rotation is handled later.
+            // For now, let's map:
+            // Angle 0 (right) -> mS positive (move right)
+            // Angle PI/2 (up) -> mF positive (move forward)
+            // Angle PI (left) -> mS negative (move left)
+            // Angle 3PI/2 (down) -> mF negative (move backward)
+
+            // The nipplejs angles are often: 0 = Right, PI/2 = Up, PI = Left, 3PI/2 = Down (clockwise from Right)
+            // A simple mapping to forward/sideways relative to joystick:
+            moveForward = Math.sin(data.angle.radian) * data.distance / 50; // Y-axis of joystick -> forward/backward
+            moveSideways = Math.cos(data.angle.radian) * data.distance / 50; // X-axis of joystick -> left/right
         });
-        window.addEventListener('touchmove', e => {
-            if(e.touches[0].clientX > window.innerWidth/2) {
-                camera.rotation.y -= (e.touches[0].clientX - tX) * 0.006;
-                tX = e.touches[0].clientX;
+
+        joy.on('end', () => {
+            moveForward = 0;
+            moveSideways = 0;
+        });
+
+        // Player rotation variables (will be controlled by screen touch/mouse)
+        let rotationX = 0; // Camera pitch (up/down)
+        let rotationY = 0; // Camera yaw (left/right)
+
+        // Mouse/Touch controls for camera rotation (looking around)
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+
+        // Using `pointerdown`, `pointermove`, `pointerup` for better touch/mouse support
+        document.addEventListener('pointerdown', (event) => {
+            // Only start dragging if not on a UI element (joystick/buttons)
+            if (event.target === renderer.domElement) {
+                isDragging = true;
+                previousMouseX = event.clientX;
+                previousMouseY = event.clientY;
             }
         });
-        window.addEventListener('touchend', () => { /* Опционально: сброс состояния */ });
 
+        document.addEventListener('pointermove', (event) => {
+            if (isDragging) {
+                const deltaX = event.clientX - previousMouseX;
+                const deltaY = event.clientY - previousMouseY;
 
-        document.getElementById('shoot-btn').ontouchstart = () => {
-            gun.position.z += 0.05;
-            setTimeout(() => gun.position.z -= 0.05, 50);
+                // Adjust sensitivity as needed
+                const sensitivity = 0.002;
+
+                rotationY -= deltaX * sensitivity; // Yaw (left/right)
+                rotationX -= deltaY * sensitivity; // Pitch (up/down)
+
+                // Clamp pitch to prevent looking too far up/down (e.g., -PI/2 to PI/2)
+                rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+
+                previousMouseX = event.clientX;
+                previousMouseY = event.clientY;
+            }
+        });
+
+        document.addEventListener('pointerup', () => {
+            isDragging = false;
+        });
+
+        // Game Loop
+        const animate = () => {
+            requestAnimationFrame(animate);
+
+            // Apply camera rotation
+            camera.rotation.y = rotationY;
+            camera.rotation.x = rotationX;
+
+            // Apply player movement
+            // Move relative to camera's current orientation
+            const speed = 0.1;
+            const forwardVector = new T
+
+HREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const sidewaysVector = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+            // Ensure vertical movement is ignored for ground movement
+            forwardVector.y = 0;
+            forwardVector.normalize();
+            sidewaysVector.y = 0;
+            sidewaysVector.normalize();
+
+            camera.position.add(forwardVector.multiplyScalar(moveForward * speed));
+            camera.position.add(sidewaysVector.multiplyScalar(moveSideways * speed));
+
+            renderer.render(scene, camera);
         };
 
-        function animate() {
-            requestAnimationFrame(animate);
-            camera.translateZ(-mF * 0.2);
-            camera.translateX(mS * 0.2);
-            renderer.render(scene, camera);
-        }
         animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Button functionality (placeholders for now)
+        document.getElementById('shoot-btn').addEventListener('pointerdown', () => {
+            console.log('FIRE!');
+            // Implement shooting logic here
+        });
+
+        document.getElementById('jump-btn').addEventListener('pointerdown', () => {
+            console.log('JUMP!');
+            // Implement jumping logic here
+        });
     </script>
 </body>
 </html>
