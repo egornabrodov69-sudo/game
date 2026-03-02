@@ -9,8 +9,8 @@
         #ui { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         #joystick { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; pointer-events: auto; }
         .btn { position: absolute; border-radius: 50%; background: rgba(0,0,0,0.5); color: white; display: flex; align-items: center; justify-content: center; pointer-events: auto; border: 2px solid #fff; font-weight: bold; }
-        #shoot-btn { bottom: 40px; right: 40px; width: 100px; height: 100px; background: rgba(255,0,0,0.6); }
-        #jump-btn { bottom: 150px; right: 50px; width: 60px; height: 60px; }
+        #shoot-btn { bottom: 40px; right: 40px; width: 100px; height: 100px; background: rgba(255,0,0,0.6); font-size: 18px; }
+        #jump-btn { bottom: 150px; right: 50px; width: 60px; height: 60px; font-size: 14px; }
         #stats { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); color: white; background: rgba(0,0,0,0.5); padding: 5px 20px; border-radius: 10px; font-size: 20px; }
     </style>
 </head>
@@ -18,7 +18,7 @@
     <div id="ui">
         <div id="stats">T 0 : 0 CT</div>
         <div id="shoot-btn" class="btn">FIRE</div>
-        <div id="jump-btn" class="btn">UP</div>
+        <div id="jump-btn" class="btn">JUMP</div>
     </div>
     <div id="joystick"></div>
 
@@ -27,71 +27,72 @@
 
     <script>
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Голубое небо
+        scene.background = new THREE.Color(0x87ceeb);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Свет
         const sun = new THREE.DirectionalLight(0xffffff, 1);
         sun.position.set(5, 10, 7.5); scene.add(sun);
         scene.add(new THREE.AmbientLight(0x404040));
 
-        // Пол (Песок Dust 2)
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color: 0xedc9af}));
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color: 0xd2b48c}));
         floor.rotation.x = -Math.PI / 2; scene.add(floor);
 
-        // СТЕНЫ И КАРТА
         const wallMat = new THREE.MeshStandardMaterial({color: 0xd2b48c});
-        function b(x,y,z,w,h,d) {
-            const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), wallMat);
+        const crateMat = new THREE.MeshStandardMaterial({color: 0x8b4513});
+        function b(x,y,z,w,h,d, material = wallMat) {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), material);
             m.position.set(x,y,z); scene.add(m);
         }
-        // Периметр
         b(0, 2.5, -20, 40, 5, 1); b(0, 2.5, 20, 40, 5, 1);
         b(-20, 2.5, 0, 1, 5, 40); b(20, 2.5, 0, 1, 5, 40);
-        // Препятствия (Ящики)
-        const crateMat = new THREE.MeshStandardMaterial({color: 0x8b4513});
-        function crate(x,z) {
-            const c = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), crateMat);
-            c.position.set(x, 0.75, z); scene.add(c);
-        }
-        crate(2, -5); crate(2, -3.5); crate(3.5, -5); // Группа ящиков
 
-        // Оружие (АК-47)
+        b(5, 0.75, -5, 1.5, 1.5, 1.5, crateMat);
+        b(5, 0.75, -3, 1.5, 1.5, 1.5, crateMat);
+        b(7, 0.75, -5, 1.5, 1.5, 1.5, crateMat);
+        b(-10, 2.5, 0, 10, 5, 1);
+
         const gun = new THREE.Group();
         gun.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshStandardMaterial({color: 0x111111})));
         gun.position.set(0.3, -0.3, -0.5); camera.add(gun); scene.add(camera);
 
-        camera.position.set(0, 1.6, 5);
+        camera.position.set(0, 1.6, 10);
 
-        // Управление
         let mF = 0, mS = 0;
         const joy = nipplejs.create({ zone: document.getElementById('joystick'), mode: 'static', position: {left: '60px', bottom: '60px'}, color: 'white' });
-        joy.on('move', (e, d) => { mF = Math.sin(d.angle.radian) * d.distance/50; mS = Math.cos(d.angle.radian) * d.distance/50; });
+        joy.on('move', (e, d) => {
+            mF = Math.sin(d.angle.radian) * d.distance/50;
+            mS = Math.cos(d.angle.radian) * d.distance/50;
+        });
         joy.on('end', () => { mF = 0; mS = 0; });
 
         let tX = 0;
-        window.addEventListener('touchstart', e => { if(e.touches[0].clientX > window.innerWidth/2) tX = e.touches[0].clientX; });
+        window.addEventListener('touchstart', e => {
+            if(e.touches[0].clientX > window.innerWidth/2) tX = e.touches[0].clientX;
+        });
         window.addEventListener('touchmove', e => {
             if(e.touches[0].clientX > window.innerWidth/2) {
                 camera.rotation.y -= (e.touches[0].clientX - tX) * 0.006;
                 tX = e.touches[0].clientX;
             }
         });
+        window.addEventListener('touchend', () => { /* Опционально: сброс состояния */ });
 
-        // Стрельба (Визуал)
+
         document.getElementById('shoot-btn').ontouchstart = () => {
-            gun.position.z += 0.05; setTimeout(() => gun.position.z -= 0.05, 50);
+            gun.position.z += 0.05;
+            setTimeout(() => gun.position.z -= 0.05, 50);
         };
 
         function animate() {
             requestAnimationFrame(animate);
-            camera.translateZ(-mF * 0.15); camera.translateX(mS * 0.15);
+            camera.translateZ(-mF * 0.2);
+            camera.translateX(mS * 0.2);
             renderer.render(scene, camera);
         }
         animate();
     </script>
 </body>
-</htmlо>
+</html>
